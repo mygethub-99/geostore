@@ -1,0 +1,15 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Oct 24 16:17:23 2018
+Reads in SF neighborhoods shapefile using geopandas instead of GDAL/OGR
+provides easier way to extract geomtry from the file
+@author: ow4253
+"""
+import geopandas as gpd
+import shapely
+
+sf_neighs=gpd.read_file('sfNeighbor.shp').set_index('name')['geometry']
+sf_neighs.head()
+
+inner_richmond_wkt=shapely.wkt.dumps(sf_neighs['Inner Richmond'])
+print (inner_richmond_wkt)
