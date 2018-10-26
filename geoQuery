@@ -1,0 +1,40 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Oct 24 16:45:05 2018
+
+@author: ow4253
+"""
+import psycopg2
+import osgeo.ogr
+import shapely
+import shapely.wkt
+import geopandas as gpd
+
+
+connection = psycopg2.connect(database="ca_blocks",user="postgres", password="$@&@!")
+cursor = connection.cursor()
+
+#Convert Shapely geometry to WKT for conversion to PostGIS geography
+sf_neighs=gpd.read_file('sfNeighbor.shp').set_index('name')['geometry']
+sf_neighs.head()
+
+#Make a spatial query
+inner_richmond_wkt=shapely.wkt.dumps(sf_neighs['Inner Richmond'])
+cursor.execute("SELECT fips,pop,ST_AsText(outline) FROM blocks "+\
+"WHERE ST_Intersects(ST_GeomFromText('{}'), centroid) ".format(inner_richmond_wkt)+\
+"AND POP>0")
+
+#Extract Data from the db and convert to geodataframe
+rows_list=[]
+for fips,pop,geo in cursor:
+    data={'FIPS':fips,'POP':pop,'geometry':shapely.wkt.loads(geo)}
+    rows_list.append(data)
+gdf=gpd.GeoDataFrame(rows_list,crs='epsg:4326').set_index('FIPS')
+gdf.head()
+
+print ('There are '+str(len(gdf)) +' census blocks in the Inner Richmond Neighborhood, \
+representing a populaton of ' + str(gdf.POP.sum()))
+
+gdf.plot(column='POP', scheme='QUANTILES', k=5, colormap='OrRd')
+
+cursor.close()
